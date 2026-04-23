@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NextGen Studio — AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #1e1e2e;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43e97b;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    font-family: 'Sora', sans-serif;
+    color: var(--text);
+    height: 100dvh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  body::before {
+    content:''; position:fixed; top:-30%; left:-20%; width:60%; height:60%;
+    background:radial-gradient(ellipse,rgba(108,99,255,0.12) 0%,transparent 70%);
+    pointer-events:none; z-index:0;
+  }
+  body::after {
+    content:''; position:fixed; bottom:-20%; right:-10%; width:50%; height:50%;
+    background:radial-gradient(ellipse,rgba(255,101,132,0.08) 0%,transparent 70%);
+    pointer-events:none; z-index:0;
+  }
+  header {
+    position:relative; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px;
+    background:rgba(17,17,24,0.85); backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+  }
+  .logo { display:flex; align-items:center; gap:10px; }
+  .logo-icon {
+    width:36px; height:36px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .logo-text { font-size:15px; font-weight:700; letter-spacing:-0.3px; }
+  .logo-text span { color:var(--accent); }
+  .status-dot { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+  .dot { width:7px; height:7px; background:var(--accent3); border-radius:50%; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  #chat {
+    flex:1; overflow-y:auto; padding:20px 16px;
+    display:flex; flex-direction:column; gap:14px;
+    position:relative; z-index:1; scroll-behavior:smooth;
+  }
+  #chat::-webkit-scrollbar { width:4px; }
+  #chat::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .msg { display:flex; align-items:flex-end; gap:8px; animation:fadeUp 0.3s ease; max-width:90%; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .msg.user { flex-direction:row-reverse; align-self:flex-end; }
+  .msg.bot  { align-self:flex-start; }
+  .avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+  .bot .avatar  { background:linear-gradient(135deg,var(--accent),#9b8fff); }
+  .user .avatar { background:linear-gradient(135deg,var(--accent2),#ff8fa3); }
+  .bubble { padding:11px 15px; border-radius:16px; font-size:13.5px; line-height:1.65; max-width:100%; }
+  .bot .bubble  { background:var(--card); border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .user .bubble { background:var(--accent); border-bottom-right-radius:4px; color:#fff; }
+
+  .service-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .svc-btn {
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:9px 11px; font-size:11.5px; font-family:'Sora',sans-serif;
+    color:var(--text); cursor:pointer; text-align:left; transition:all 0.2s; line-height:1.4;
+  }
+  .svc-btn:hover { border-color:var(--accent); background:rgba(108,99,255,0.1); transform:translateY(-1px); }
+
+  .detail-card {
+    margin-top:10px; background:rgba(108,99,255,0.06);
+    border:1px solid rgba(108,99,255,0.2); border-radius:12px;
+    padding:12px 14px; font-size:12.5px; line-height:1.75;
+  }
+
+  .price-card { margin-top:10px; background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .price-header {
+    background:linear-gradient(135deg,rgba(108,99,255,0.2),rgba(255,101,132,0.1));
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    font-weight:600; font-size:12.5px; color:var(--accent);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;
+  }
+  .price-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 14px; border-bottom:1px solid rgba(30,30,46,0.6); font-size:12.5px;
+  }
+  .price-row:last-child { border-bottom:none; }
+  .price-val { font-family:'DM Mono',monospace; color:var(--accent3); font-size:12px; }
+  .price-old { text-decoration:line-through; color:var(--muted); font-size:11px; }
+  .badge { display:inline-block; background:var(--accent2); color:#fff; font-size:10px; font-weight:600; padding:2px 7px; border-radius:20px; }
+
+  .action-row { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+  .book-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border:none; border-radius:10px; padding:9px 16px;
+    font-size:12.5px; font-family:'Sora',sans-serif; font-weight:600; color:#fff;
+    cursor:pointer; transition:opacity 0.2s,transform 0.1s;
+  }
+  .book-btn:hover { opacity:0.85; transform:translateY(-1px); }
+  .back-btn {
+    background:transparent; border:1px solid var(--border); border-radius:8px;
+    padding:6px 12px; font-size:12px; font-family:'Sora',sans-serif;
+    color:var(--muted); cursor:pointer; transition:all 0.2s;
+  }
+  .back-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  .typing { display:flex; gap:4px; padding:13px 16px; background:var(--card); border:1px solid var(--border); border-radius:16px; border-bottom-left-radius:4px; width:fit-content; }
+  .typing span { width:6px; height:6px; background:var(--muted); border-radius:50%; animation:bounce 1.2s infinite; }
+  .typing span:nth-child(2){animation-delay:0.15s} .typing span:nth-child(3){animation-delay:0.3s}
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px);background:var(--accent)} }
+
+  footer {
+    position:relative; z-index:10; padding:12px 16px;
+    background:rgba(17,17,24,0.85); backdrop-filter:blur(20px); border-top:1px solid var(--border);
+  }
+  .input-row {
+    display:flex; gap:8px; align-items:flex-end; background:var(--card);
+    border:1px solid var(--border); border-radius:14px; padding:8px 12px; transition:border-color 0.2s;
+  }
+  .input-row:focus-within { border-color:var(--accent); }
+  #userInput {
+    flex:1; background:none; border:none; outline:none; color:var(--text);
+    font-family:'Sora',sans-serif; font-size:13.5px; resize:none; max-height:100px; line-height:1.5;
+  }
+  #userInput::placeholder { color:var(--muted); }
+  #sendBtn {
+    width:34px; height:34px; background:linear-gradient(135deg,var(--accent),#9b8fff);
+    border:none; border-radius:10px; color:#fff; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:opacity 0.2s,transform 0.1s;
+  }
+  #sendBtn:hover{opacity:0.85} #sendBtn:active{transform:scale(0.95)}
+  .footer-note { text-align:center; font-size:10.5px; color:var(--muted); margin-top:7px; }
+  .welcome-chip {
+    text-align:center; font-size:11px; color:var(--muted); padding:5px 12px;
+    background:var(--card); border:1px solid var(--border); border-radius:20px;
+    display:inline-block; margin:0 auto; align-self:center;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div class="logo-text">Next<span>Gen</span> Studio</div>
+  </div>
+  <div class="status-dot"><div class="dot"></div> Online</div>
+</header>
+<div id="chat"></div>
+<footer>
+  <div class="input-row">
+    <textarea id="userInput" rows="1" placeholder="Hindi ya English mein likhein..."></textarea>
+    <button id="sendBtn" onclick="handleSend()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+  <div class="footer-note">NextGen Studio · Hindi & English Support</div>
+</footer>
+
+<script>
+// ── CONFIG ──────────────────────────────────
+const TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN";
+const TELEGRAM_CHAT_ID   = "YOUR_CHAT_ID";
+
+// ── LANGUAGE ─────────────────────────────────
+let curLang = 'en';
+
+function detectLang(text) {
+  if (/[\u0900-\u097F]/.test(text)) return 'hi';
+  const hi = ['hindi','batao','bolo','karo','karen','mujhe','mera','mere','haan','nahi','accha','acha','theek','thik','service','kya','kitna','kitne','sab','koi','wala','ek','do','bhai','jaldi','chahiye','dekhna','kaise','kaisa','lena','lelo','yaar','plz'];
+  const l = text.toLowerCase();
+  return hi.some(w => l.includes(w)) ? 'hi' : 'en';
+}
+
+// ── SERVICES DATA ────────────────────────────
+const services = [
+  {
+    id:"sem", icon:"🔍",
+    name:{en:"Search Engine Marketing",hi:"सर्च इंजन मार्केटिंग"},
+    short:{en:"SEO / PPC / Local SEO",hi:"SEO / PPC / लोकल SEO"},
+    detail:{
+      en:"SEM puts your business in front of people actively searching for you.\n\n✅ <b>Why you need it:</b>\n• SEO brings free, long-term Google traffic\n• PPC ads bring instant targeted visitors\n• Local SEO helps nearby customers find you\n• Technical SEO makes your site fast & Google-friendly\n• Outrank competitors and dominate search results",
+      hi:"SEM आपके business को उन लोगों के सामने लाती है जो आपको ढूंढ रहे हैं।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• SEO से free, long-term Google traffic मिलती है\n• PPC ads से तुरंत targeted visitors आते हैं\n• Local SEO से पास के customers आपको ढूंढते हैं\n• Technical SEO से site fast और Google-friendly बनती है\n• Competitors को पीछे छोड़ें और search पर छाएं"
+    },
+    packages:[
+      {name:{en:"Basic SEO",hi:"बेसिक SEO"},note:"₹2,499/mo"},
+      {name:{en:"PPC Campaign",hi:"PPC कैम्पेन"},note:"₹2,999/mo"},
+      {name:{en:"Local SEO",hi:"लोकल SEO"},note:"₹1,799/mo"},
+      {name:{en:"Ecommerce SEO",hi:"Ecommerce SEO"},note:"₹3,499/mo"},
+      {name:{en:"Technical SEO Audit",hi:"Technical SEO ऑडिट"},note:"₹1,999"},
+    ]
+  },
+  {
+    id:"smm", icon:"📱",
+    name:{en:"Social Media Marketing",hi:"सोशल मीडिया मार्केटिंग"},
+    short:{en:"Instagram / Facebook / Paid Ads",hi:"Instagram / Facebook / Paid Ads"},
+    detail:{
+      en:"Build your brand where billions of people spend their time every day.\n\n✅ <b>Why you need it:</b>\n• Build a loyal audience that trusts your brand\n• Paid ads target exact customers by age, interest & location\n• Influencer collabs boost credibility instantly\n• Community management builds strong customer relationships\n• Stay top-of-mind with consistent posting",
+      hi:"अपनी brand उस जगह बनाएं जहाँ लोग सबसे ज्यादा समय बिताते हैं।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Loyal audience बनाएं जो आप पर trust करे\n• Paid ads से सही customers तक पहुंचें\n• Influencer collab से जल्दी credibility बढ़े\n• Community management से strong relations बनें\n• Consistent posting से brand याद रहे"
+    },
+    packages:[
+      {name:{en:"Organic Social Management",hi:"ऑर्गेनिक सोशल"},note:"₹2,299/mo"},
+      {name:{en:"Paid Social Ads",hi:"पेड सोशल ऐड्स"},note:"₹3,499/mo"},
+      {name:{en:"Influencer Marketing",hi:"इन्फ्लुएंसर मार्केटिंग"},note:"₹4,499/mo"},
+      {name:{en:"Community Management",hi:"कम्युनिटी मैनेजमेंट"},note:"₹1,999/mo"},
+      {name:{en:"Social Media Audit",hi:"सोशल ऑडिट"},note:"₹1,499"},
+    ]
+  },
+  {
+    id:"content-marketing", icon:"✍️",
+    name:{en:"Content Marketing",hi:"कंटेंट मार्केटिंग"},
+    short:{en:"Blogs / Videos / Strategy",hi:"ब्लॉग / वीडियो / स्ट्रेटेजी"},
+    detail:{
+      en:"Attract customers by giving them value first — then selling.\n\n✅ <b>Why you need it:</b>\n• Blogs rank on Google and bring free traffic for years\n• Video builds trust faster than any other format\n• Infographics make complex info simple & shareable\n• A content strategy keeps you consistent and ahead of competitors\n• Content works 24/7 even when you're offline",
+      hi:"Customers को पहले value दें — फिर sale होगी।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Blogs Google पर rank होते हैं और सालों तक free traffic लाते हैं\n• Video किसी भी format से तेज़ trust बनाता है\n• Infographics complex info को simple और shareable बनाते हैं\n• Content strategy से consistency और competition से आगे रहना होता है\n• Content offline रहने पर भी 24/7 काम करता है"
+    },
+    packages:[
+      {name:{en:"Blog Article (per piece)",hi:"ब्लॉग आर्टिकल"},note:"₹699"},
+      {name:{en:"Video Marketing (per video)",hi:"वीडियो मार्केटिंग"},note:"₹3,999"},
+      {name:{en:"Infographic Design",hi:"इन्फोग्राफिक"},note:"₹999"},
+      {name:{en:"Podcast Marketing",hi:"पॉडकास्ट मार्केटिंग"},note:"₹2,499/mo"},
+      {name:{en:"Content Strategy Plan",hi:"कंटेंट स्ट्रेटेजी"},note:"₹2,999"},
+    ]
+  },
+  {
+    id:"email", icon:"📧",
+    name:{en:"Email Marketing",hi:"ईमेल मार्केटिंग"},
+    short:{en:"Newsletters / Drip Campaigns",hi:"न्यूज़लेटर / ड्रिप कैम्पेन"},
+    detail:{
+      en:"Email gives the highest ROI of any channel — ₹1 spent = ₹40 returned on average.\n\n✅ <b>Why you need it:</b>\n• Newsletters keep your audience engaged every week\n• Drip campaigns automatically convert cold leads into buyers\n• Lead sequences guide prospects step-by-step to a purchase\n• List segmentation = right message to the right person\n• Works 24/7, even while you sleep",
+      hi:"Email सबसे ज्यादा ROI देने वाला channel है — ₹1 खर्च पर ₹40 वापस।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Newsletters से audience हर हफ्ते engaged रहती है\n• Drip campaigns automatically cold leads को buyers बनाते हैं\n• Lead sequences prospects को purchase तक step-by-step guide करती हैं\n• List segmentation से सही message सही इंसान को जाता है\n• सोते समय भी 24/7 काम करता है"
+    },
+    packages:[
+      {name:{en:"Newsletter Campaign",hi:"न्यूज़लेटर"},note:"₹1,599/mo"},
+      {name:{en:"Drip Campaign Setup",hi:"ड्रिप कैम्पेन"},note:"₹2,799/mo"},
+      {name:{en:"Lead Nurturing Sequence",hi:"लीड नर्चरिंग"},note:"₹2,499/mo"},
+      {name:{en:"List Segmentation",hi:"लिस्ट सेगमेंटेशन"},note:"₹1,599/mo"},
+    ]
+  },
+  {
+    id:"cro", icon:"📈",
+    name:{en:"Website & CRO",hi:"वेबसाइट और CRO"},
+    short:{en:"Conversion Rate Optimization",hi:"कन्वर्ज़न ऑप्टिमाइज़ेशन"},
+    detail:{
+      en:"CRO turns your existing traffic into more sales — without spending more on ads.\n\n✅ <b>Why you need it:</b>\n• Fix leaks in your funnel where customers drop off\n• A/B testing finds the best performing design & copy\n• Landing pages built specifically to convert visitors\n• Even a 1% conversion improvement = massive revenue gains\n• Stop losing customers who were already interested",
+      hi:"CRO existing traffic से ज्यादा sales निकालता है — बिना ज्यादा ads खर्च किए।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Funnel के वो holes बंद करें जहाँ customers छोड़ जाते हैं\n• A/B testing से best design और copy ढूंढें\n• Landing pages specifically convert करने के लिए बनाई जाती हैं\n• 1% conversion improvement भी बड़ा revenue बनाता है\n• Already interested customers को खोना बंद करें"
+    },
+    packages:[
+      {name:{en:"CRO Audit + Strategy",hi:"CRO ऑडिट"},note:"₹2,999"},
+      {name:{en:"Landing Page Design",hi:"लैंडिंग पेज"},note:"₹2,999"},
+      {name:{en:"A/B Testing Setup",hi:"A/B टेस्टिंग"},note:"₹2,299/mo"},
+      {name:{en:"Funnel Optimization",hi:"फनल ऑप्टिमाइज़ेशन"},note:"₹3,499/mo"},
+    ]
+  },
+  {
+    id:"analytics", icon:"📊",
+    name:{en:"Analytics & Data",hi:"एनालिटिक्स और डेटा"},
+    short:{en:"Reports / Competitor Analysis",hi:"रिपोर्ट्स / कम्पीटीटर एनालिसिस"},
+    detail:{
+      en:"Stop guessing — start making decisions backed by real data.\n\n✅ <b>Why you need it:</b>\n• Know exactly which channel is giving you the best ROI\n• Competitor analysis reveals gaps you can exploit\n• Attribution modeling shows which touchpoint closes sales\n• Monthly reports = full control over your growth\n• Stop wasting budget on campaigns that don't work",
+      hi:"Guess करना बंद करें — real data से decisions लें।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• जानें कौन सा channel सबसे ज्यादा ROI दे रहा है\n• Competitor analysis से gaps ढूंढें जिन्हें exploit करें\n• Attribution modeling बताता है कौन सा touchpoint sale close करता है\n• Monthly reports से growth पर पूरा control\n• बेकार campaigns पर पैसे बर्बाद होना बंद हो जाता है"
+    },
+    packages:[
+      {name:{en:"Marketing Analytics Report",hi:"मार्केटिंग रिपोर्ट"},note:"₹2,499/mo"},
+      {name:{en:"Competitor Analysis",hi:"कम्पीटीटर एनालिसिस"},note:"₹1,999"},
+      {name:{en:"Attribution Modeling",hi:"एट्रिब्यूशन मॉडलिंग"},note:"₹2,499/mo"},
+    ]
+  },
+  {
+    id:"other-dm", icon:"🌐",
+    name:{en:"Other Digital Marketing",hi:"अन्य डिजिटल मार्केटिंग"},
+    short:{en:"ORM / WhatsApp / Affiliate",hi:"ORM / WhatsApp / एफिलिएट"},
+    detail:{
+      en:"Specialized services that give you a competitive edge.\n\n✅ <b>What's included:</b>\n• Affiliate Marketing — let others sell for you on commission\n• ORM — protect and clean up your online reputation\n• WhatsApp Marketing — 90%+ open rate, highest of any channel\n• Programmatic Ads — AI-powered automated ad buying\n• Digital PR — get featured in top publications",
+      hi:"Specialized services जो आपको competitive edge देती हैं।\n\n✅ <b>इसमें क्या है:</b>\n• Affiliate Marketing — दूसरों से commission पर sale करवाएं\n• ORM — अपनी online reputation protect और clean करें\n• WhatsApp Marketing — 90%+ open rate, सबसे ज्यादा किसी भी channel का\n• Programmatic Ads — AI-powered automated ad buying\n• Digital PR — top publications में feature हों"
+    },
+    packages:[
+      {name:{en:"Affiliate Marketing",hi:"एफिलिएट मार्केटिंग"},note:"₹2,299/mo"},
+      {name:{en:"Reputation Management (ORM)",hi:"ORM"},note:"₹2,999/mo"},
+      {name:{en:"WhatsApp Marketing",hi:"WhatsApp मार्केटिंग"},note:"₹1,799/mo"},
+      {name:{en:"Programmatic Advertising",hi:"प्रोग्रामेटिक ऐड्स"},note:"₹4,499/mo"},
+      {name:{en:"Digital PR",hi:"डिजिटल PR"},note:"₹3,499/mo"},
+    ]
+  },
+  {
+    id:"content-script", icon:"📝",
+    name:{en:"Content Script Writing",hi:"कंटेंट स्क्रिप्ट राइटिंग"},
+    short:{en:"YouTube / Reels / Shorts Scripts",hi:"YouTube / Reels / Shorts स्क्रिप्ट"},
+    detail:{
+      en:"A great script is the backbone of viral content — the best creators don't wing it.\n\n✅ <b>Why you need it:</b>\n• Hook + Story + CTA structure that converts viewers to followers\n• Long-form scripts keep YouTube viewers hooked till the end\n• Short-form scripts built for maximum retention on Reels/Shorts\n• Research-backed scripts position you as a niche expert\n• Saves you hours — just record and post",
+      hi:"एक अच्छी script viral content की backbone है — best creators कभी बिना script के नहीं जाते।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Hook + Story + CTA structure viewers को followers बनाती है\n• Long-form scripts YouTube viewers को अंत तक बांधे रखती हैं\n• Short-form scripts Reels/Shorts पर maximum retention के लिए\n• Research-backed scripts आपको niche expert बनाकर दिखाती हैं\n• घंटों की सोच बचती है — बस record करो और post करो"
+    },
+    packages:[
+      {name:{en:"Short Script (Reels/Shorts)",hi:"शॉर्ट स्क्रिप्ट (Reels)"},note:"₹80–₹150"},
+      {name:{en:"Long Script (YouTube)",hi:"लॉन्ग स्क्रिप्ट (YouTube)"},note:"₹300–₹500"},
+    ]
+  },
+  {
+    id:"editing", icon:"🎬",
+    name:{en:"Video Editing",hi:"वीडियो एडिटिंग"},
+    short:{en:"Reels / YouTube / Ad Videos",hi:"Reels / YouTube / Ad वीडियो"},
+    detail:{
+      en:"Professional editing transforms raw footage into scroll-stopping content.\n\n✅ <b>Why you need it:</b>\n• Reels/Shorts with trending transitions, music & captions\n• YouTube editing with chapters, color grading & thumbnails\n• Ad video editing optimized for conversions\n• Fast turnaround — most edits done in 24–48 hours\n• Brand-consistent style across all your videos",
+      hi:"Professional editing raw footage को scroll-stopping content में बदलती है।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Reels/Shorts में trending transitions, music और captions\n• YouTube editing में chapters, color grading और thumbnails\n• Ad videos conversion के लिए optimized\n• Fast turnaround — ज़्यादातर edits 24-48 घंटे में\n• सभी videos में brand-consistent style"
+    },
+    packages:[
+      {name:{en:"Short Form Edit (Reel/Short)",hi:"शॉर्ट फॉर्म एडिट"},note:"₹150–₹299"},
+      {name:{en:"Long Form Edit (YouTube)",hi:"लॉन्ग फॉर्म एडिट"},note:"₹499–₹799"},
+      {name:{en:"Ad Video Edit",hi:"ऐड वीडियो एडिट"},note:"₹350–₹599"},
+    ]
+  },
+  {
+    id:"ai-ads", icon:"🤖",
+    name:{en:"AI Ads Creation",hi:"AI ऐड्स क्रिएशन"},
+    short:{en:"AI-powered Ad Creatives",hi:"AI-powered ऐड क्रिएटिव"},
+    detail:{
+      en:"AI Ads are the future — professional visuals at a fraction of the traditional cost.\n\n✅ <b>Why you need it:</b>\n• Hyper-realistic AI ad creatives that look premium\n• A/B variants created in minutes, not days\n• Works for Meta, Google, YouTube & print\n• 70% cheaper than traditional ad agencies\n• Unique visuals that stand out in crowded feeds",
+      hi:"AI Ads भविष्य हैं — professional visuals traditional cost के fraction पर।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Hyper-realistic AI ad creatives जो premium लगते हैं\n• A/B variants मिनटों में, दिनों में नहीं\n• Meta, Google, YouTube और print के लिए\n• Traditional agencies से 70% सस्ता\n• Unique visuals जो crowded feeds में अलग दिखते हैं"
+    },
+    packages:[
+      {name:{en:"Single AI Ad Creative",hi:"सिंगल AI ऐड"},note:"₹199–₹499"},
+      {name:{en:"Ad Campaign Pack (5 creatives)",hi:"ऐड कैम्पेन पैक (5)"},note:"₹799–₹1,299"},
+    ]
+  },
+  {
+    id:"website", icon:"🌍",
+    name:{en:"Website Design",hi:"वेबसाइट डिज़ाइन"},
+    short:{en:"Landing Page / Business / Ecommerce",hi:"लैंडिंग पेज / बिजनेस / Ecommerce"},
+    detail:{
+      en:"Your website is your 24/7 salesperson that works even while you sleep.\n\n✅ <b>Why you need it:</b>\n• 75% of people judge a business by its website — first impressions matter\n• Captures leads, bookings & sales automatically round the clock\n• Mobile-optimized so customers reach you from anywhere\n• SEO-ready structure helps you rank on Google\n• One-time investment that pays back for years\n• Without a website, you're invisible online",
+      hi:"आपकी website आपका 24/7 salesperson है जो सोते समय भी काम करती है।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• 75% लोग website देखकर business judge करते हैं — first impression मायने रखता है\n• Leads, bookings और sales automatically 24 घंटे capture होती हैं\n• Mobile-optimized — customers कहीं से भी reach कर सकते हैं\n• SEO-ready structure से Google पर rank होते हैं\n• एक बार का investment जो सालों तक return देता है\n• बिना website के आप online invisible हैं"
+    },
+    packages:[
+      {name:{en:"Landing Page (1 page)",hi:"लैंडिंग पेज (1 पेज)"},note:"₹2,500–₹3,999"},
+      {name:{en:"Business Site (5 pages)",hi:"बिजनेस साइट (5 पेज)"},note:"₹4,999–₹7,999"},
+      {name:{en:"Ecommerce Website",hi:"Ecommerce वेबसाइट"},note:"₹9,999–₹14,999"},
+    ]
+  },
+  {
+    id:"chatbot", icon:"💬",
+    name:{en:"AI Chatbot Build",hi:"AI चैटबॉट बिल्ड"},
+    short:{en:"Website / WhatsApp / Telegram Bot",hi:"Website / WhatsApp / Telegram बॉट"},
+    detail:{
+      en:"An AI chatbot works 24/7, never sleeps, and handles unlimited customers at once.\n\n✅ <b>Why you need it:</b>\n• Answers customer queries instantly without you lifting a finger\n• Captures leads even at 3AM when you're asleep\n• Reduces customer support cost by 60–80%\n• WhatsApp & Telegram bots reach customers where they already are\n• Can be trained on your exact products, FAQs & services",
+      hi:"AI Chatbot 24/7 काम करता है, सोता नहीं, और एक साथ unlimited customers handle करता है।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• बिना आपके customer queries instantly answer होती हैं\n• रात 3 बजे भी leads capture होती हैं\n• Customer support cost 60-80% कम हो जाती है\n• WhatsApp और Telegram bots customers वहाँ reach करते हैं जहाँ वे पहले से हैं\n• आपके products, FAQs और services पर train किया जा सकता है"
+    },
+    packages:[
+      {name:{en:"Basic Info/FAQ Chatbot",hi:"बेसिक FAQ चैटबॉट"},note:"₹1,999–₹3,499"},
+      {name:{en:"Advanced AI Chatbot",hi:"Advanced AI चैटबॉट"},note:"₹4,999–₹9,999"},
+      {name:{en:"WhatsApp / Telegram Bot",hi:"WhatsApp / Telegram बॉट"},note:"₹2,999–₹5,999"},
+    ]
+  },
+  {
+    id:"agents", icon:"⚙️",
+    name:{en:"AI Agents Build",hi:"AI एजेंट बिल्ड"},
+    short:{en:"Business Automation & Workflows",hi:"बिजनेस ऑटोमेशन और वर्कफ्लो"},
+    detail:{
+      en:"AI Agents complete multi-step tasks automatically — without any human involvement.\n\n✅ <b>Why you need it:</b>\n• Automate repetitive tasks: data entry, follow-ups, reporting\n• Connect multiple apps together (CRM, email, sheets, Telegram)\n• Run entire business workflows on autopilot\n• Scale operations without hiring more staff\n• Custom-built for your exact business process",
+      hi:"AI Agents बिना human involvement के multi-step tasks automatically complete करते हैं।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Repetitive tasks automate करें: data entry, follow-ups, reporting\n• Multiple apps जोड़ें (CRM, email, sheets, Telegram)\n• पूरे business workflows autopilot पर चलाएं\n• Extra staff hire किए बिना operations scale करें\n• आपके exact business process के लिए custom built"
+    },
+    packages:[
+      {name:{en:"Simple Automation Agent",hi:"सिंपल ऑटोमेशन एजेंट"},note:"₹3,499–₹5,999"},
+      {name:{en:"Multi-step Business Agent",hi:"बिजनेस एजेंट"},note:"₹7,999–₹14,999"},
+      {name:{en:"Custom API Agent",hi:"कस्टम API एजेंट"},note:"₹12,999+"},
+    ]
+  },
+  {
+    id:"strategy", icon:"🗺️",
+    name:{en:"Marketing Strategy",hi:"मार्केटिंग स्ट्रेटेजी"},
+    short:{en:"Full-funnel Growth Plan",hi:"फुल-फनल ग्रोथ प्लान"},
+    detail:{
+      en:"Without a strategy, marketing is just expensive guessing.\n\n✅ <b>Why you need it:</b>\n• Clear monthly roadmap — know exactly what to do\n• Identify your ideal customer and how to reach them\n• Allocate budget where it gives the most ROI\n• Competitor gap analysis to stay ahead\n• Covers SEO + Social + Email + Ads in one unified plan",
+      hi:"Strategy के बिना marketing बस महंगा guess work है।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Clear monthly roadmap — exactly क्या करना है पता रहे\n• Ideal customer कौन है और उन तक कैसे पहुंचें\n• Budget को highest ROI वाली जगह allocate करें\n• Competitor gap analysis से आगे रहें\n• SEO + Social + Email + Ads सब एक unified plan में"
+    },
+    packages:[
+      {name:{en:"Starter Strategy Plan",hi:"स्टार्टर स्ट्रेटेजी"},note:"₹1,799–₹2,999"},
+      {name:{en:"Full Marketing Blueprint",hi:"फुल मार्केटिंग ब्लूप्रिंट"},note:"₹3,999–₹6,999"},
+    ]
+  },
+  {
+    id:"digital-products", icon:"📦",
+    name:{en:"Digital Products",hi:"डिजिटल प्रोडक्ट्स"},
+    short:{en:"eBooks / Templates / Mini Courses",hi:"ईबुक / टेम्प्लेट / मिनी कोर्स"},
+    detail:{
+      en:"Create once, sell forever — digital products are the ultimate passive income.\n\n✅ <b>Why you need it:</b>\n• eBooks establish you as an authority in your niche\n• Templates save customers time — high perceived value, easy to sell\n• Mini courses are the fastest-growing online income stream\n• Zero inventory, zero shipping — 100% profit margin\n• Sell on your website, Gumroad, Instagram — anywhere",
+      hi:"एक बार बनाओ, हमेशा बिकता रहे — digital products ultimate passive income हैं।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• eBooks आपको niche में authority बनाते हैं\n• Templates customers का समय बचाते हैं — high perceived value, easy to sell\n• Mini courses online income का सबसे तेज़ बढ़ने वाला stream\n• Zero inventory, zero shipping — 100% profit margin\n• Website, Gumroad, Instagram — कहीं भी बेचें"
+    },
+    packages:[
+      {name:{en:"eBook / Guide Creation",hi:"ईबुक / गाइड"},note:"₹1,299–₹2,499"},
+      {name:{en:"Template Pack Design",hi:"टेम्प्लेट पैक"},note:"₹1,499–₹2,999"},
+      {name:{en:"Mini Course Setup",hi:"मिनी कोर्स"},note:"₹3,499–₹5,999"},
+    ]
+  },
+  {
+    id:"prompts", icon:"💡",
+    name:{en:"AI Prompts Book",hi:"AI प्रॉम्प्ट्स बुक"},
+    short:{en:"ChatGPT / Claude Prompt Packs",hi:"ChatGPT / Claude प्रॉम्प्ट पैक"},
+    detail:{
+      en:"AI is only as powerful as your prompts. A great prompts book = 10x productivity.\n\n✅ <b>Why you need it:</b>\n• Ready-to-use prompts for content, marketing, sales & more\n• Save hours of trial and error with AI tools\n• Niche-specific prompts that give professional-quality outputs\n• Covers ChatGPT, Claude, Midjourney & more\n• Perfect for creators, marketers, freelancers & business owners",
+      hi:"AI उतना ही powerful है जितना आपका prompt। एक अच्छी prompts book = 10x productivity।\n\n✅ <b>क्यों ज़रूरी है:</b>\n• Content, marketing, sales के लिए ready-to-use prompts\n• AI tools के साथ trial and error में घंटे बचाएं\n• Niche-specific prompts जो professional-quality outputs देते हैं\n• ChatGPT, Claude, Midjourney और बाकी सबके लिए\n• Creators, marketers, freelancers और business owners के लिए"
+    },
+    packages:[
+      {name:{en:"Niche Prompt Pack (50 prompts)",hi:"नीश प्रॉम्प्ट पैक (50)"},note:"₹149–₹399"},
+      {name:{en:"Ultimate Prompts Book (200+)",hi:"अल्टीमेट प्रॉम्प्ट्स बुक (200+)"},note:"₹499–₹799"},
+    ]
+  },
+  {
+    id:"free-tools", icon:"🆓",
+    name:{en:"Free AI Tools",hi:"फ्री AI टूल्स"},
+    short:{en:"Curated Free AI Tool Directory",hi:"क्यूरेटेड फ्री AI टूल्स"},
+    detail:{
+      en:"Free AI tools can save you hours every single day — here's how they transform your life:\n\n🤖 <b>Top Free AI Tools we share:</b>\n• <b>ChatGPT Free</b> — write emails, content & ideas in seconds\n• <b>Canva AI</b> — design professional graphics without a designer\n• <b>Bing Image Creator</b> — generate stunning AI images for free\n• <b>Google NotebookLM</b> — summarize any document or PDF instantly\n• <b>ElevenLabs Free</b> — convert text to natural human voice for videos\n• <b>Suno AI</b> — generate background music for your content, free\n• <b>Runway ML Free</b> — AI video generation & editing\n• <b>Perplexity AI</b> — smarter, faster research than Google\n\nWe provide a curated list with tutorials so you start using them TODAY.",
+      hi:"फ्री AI tools हर रोज़ आपके घंटे बचा सकते हैं — इस तरह ये आपकी ज़िंदगी बदलते हैं:\n\n🤖 <b>Top Free AI Tools जो हम share करते हैं:</b>\n• <b>ChatGPT Free</b> — seconds में emails, content और ideas लिखें\n• <b>Canva AI</b> — बिना designer के professional graphics बनाएं\n• <b>Bing Image Creator</b> — free में stunning AI images generate करें\n• <b>Google NotebookLM</b> — कोई भी document या PDF instantly summarize करें\n• <b>ElevenLabs Free</b> — videos के लिए text को natural human voice में बदलें\n• <b>Suno AI</b> — content के लिए free background music generate करें\n• <b>Runway ML Free</b> — AI video generation और editing\n• <b>Perplexity AI</b> — Google से smarter और faster research\n\nहम tutorials के साथ curated list provide करते हैं ताकि आप आज से ही शुरू कर सकें।"
+    },
+    packages:[
+      {name:{en:"Free AI Tools Directory + Tutorials",hi:"फ्री AI टूल्स डायरेक्टरी + Tutorials"},note:"FREE 🎁"},
+    ]
+  },
+];
+
+// ── UI HELPERS ───────────────────────────────
+const chat = document.getElementById('chat');
+function scrollDown(){chat.scrollTop=chat.scrollHeight}
+
+function addMsg(html, who){
+  const wrap=document.createElement('div'); wrap.className=`msg ${who}`;
+  const av=document.createElement('div'); av.className='avatar'; av.textContent=who==='bot'?'⚡':'👤';
+  const b=document.createElement('div'); b.className='bubble'; b.innerHTML=fmt(html);
+  wrap.appendChild(av); wrap.appendChild(b); chat.appendChild(wrap); scrollDown();
+  return b;
+}
+
+function fmt(t){
+  return t
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/<b>(.*?)<\/b>/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+function showTyping(){
+  const wrap=document.createElement('div'); wrap.className='msg bot'; wrap.id='typ';
+  const av=document.createElement('div'); av.className='avatar'; av.textContent='⚡';
+  const t=document.createElement('div'); t.className='typing';
+  t.innerHTML='<span></span><span></span><span></span>';
+  wrap.appendChild(av); wrap.appendChild(t); chat.appendChild(wrap); scrollDown();
+}
+function hideTyping(){const e=document.getElementById('typ');if(e)e.remove();}
+function respond(fn,d=700){showTyping();setTimeout(()=>{hideTyping();fn();},d);}
+
+// ── RENDER SERVICE GRID ───────────────────────
+function showGrid(){
+  const l=curLang;
+  const lbl=l==='hi'?'नीचे से कोई सेवा चुनें 👇':'Choose a service to explore 👇';
+  const bubble=addMsg(lbl,'bot');
+  const grid=document.createElement('div'); grid.className='service-grid';
+  services.forEach(svc=>{
+    const btn=document.createElement('button'); btn.className='svc-btn';
+    btn.innerHTML=`${svc.icon} ${svc.name[l]}<br><small style="color:var(--muted);font-size:10px">${svc.short[l]}</small>`;
+    btn.onclick=()=>{
+      addMsg(`${svc.icon} ${svc.name[l]}`,'user');
+      respond(()=>showDetail(svc),500);
+    };
+    grid.appendChild(btn);
+  });
+  bubble.appendChild(grid); scrollDown();
+}
+
+// ── RENDER SERVICE DETAIL ─────────────────────
+function showDetail(svc){
+  const l=curLang;
+  const bubble=addMsg(`<strong>${svc.icon} ${svc.name[l]}</strong>`,'bot');
+
+  // Details
+  const det=document.createElement('div'); det.className='detail-card';
+  det.innerHTML=fmt(svc.detail[l]); bubble.appendChild(det);
+
+  // Pricing
+  const pc=document.createElement('div'); pc.className='price-card';
+  const ph=document.createElement('div'); ph.className='price-header';
+  ph.innerHTML=(l==='hi'?'💰 कीमतें':'💰 Pricing')+'&nbsp;<span class="badge">40% OFF — 1st Service!</span>';
+  pc.appendChild(ph);
+
+  svc.packages.forEach(pkg=>{
+    const row=document.createElement('div'); row.className='price-row';
+    const nm=document.createElement('span'); nm.textContent=pkg.name[l]; row.appendChild(nm);
+    const right=document.createElement('div'); right.style.textAlign='right';
+
+    if(pkg.note==="FREE 🎁"){
+      const pv=document.createElement('div'); pv.className='price-val'; pv.textContent='FREE 🎁';
+      right.appendChild(pv);
+    } else {
+      const old=document.createElement('div'); old.className='price-old'; old.textContent=pkg.note;
+      right.appendChild(old);
+      const pv=document.createElement('div'); pv.className='price-val'; pv.textContent=applyDiscount(pkg.note);
+      right.appendChild(pv);
+    }
+    row.appendChild(right); pc.appendChild(row);
+  });
+  bubble.appendChild(pc);
+
+  // Buttons
+  const ar=document.createElement('div'); ar.className='action-row';
+
+  const bb=document.createElement('button'); bb.className='book-btn';
+  bb.innerHTML=l==='hi'?'📩 Telegram पर बुक करें':'📩 Book via Telegram';
+  bb.onclick=()=>{
+    addMsg(bb.textContent.trim(),'user');
+    sendTelegram(svc.name[l]);
+    respond(()=>addMsg(
+      l==='hi'
+        ?'✅ Request भेज दी गई! हमारी team जल्द Telegram पर संपर्क करेगी। 🙌'
+        :'✅ Request sent! Our team will contact you on Telegram shortly. 🙌',
+      'bot'
+    ),600);
+  };
+  ar.appendChild(bb);
+
+  const bk=document.createElement('button'); bk.className='back-btn';
+  bk.textContent=l==='hi'?'← सेवाओं पर वापस':'← Back to Services';
+  bk.onclick=()=>{addMsg(bk.textContent.trim(),'user');respond(()=>showGrid(),400);};
+  ar.appendChild(bk);
+
+  bubble.appendChild(ar); scrollDown();
+}
+
+function applyDiscount(price){
+  return price.replace(/₹([\d,]+)/g,(m,n)=>{
+    const num=parseInt(n.replace(/,/g,''));
+    const d=Math.round(num*0.6);
+    return '₹'+d.toLocaleString('en-IN');
+  });
+}
+
+// ── TELEGRAM ─────────────────────────────────
+function sendTelegram(serviceName){
+  if(TELEGRAM_BOT_TOKEN==="YOUR_BOT_TOKEN") return;
+  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      chat_id:TELEGRAM_CHAT_ID,
+      text:`🔔 *New Lead — NextGen Studio*\n\n📌 Service: ${serviceName}\n⏰ ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}\n\n_Reply fast to close!_`,
+      parse_mode:'Markdown'
+    })
+  }).catch(()=>{});
+}
+
+// ── INPUT ─────────────────────────────────────
+const greetWords=['hi','hello','hii','hey','namaste','salam','kya ho','service','bata','batao','help','show','list','sab','bolo','dekhna','chahiye','start','begin','क्या','बताओ','सेवा','शुरू'];
+const priceWords=['price','pricing','cost','kitna','rate','charge','fees','daam','rupee','₹','कितना','कीमत','दाम'];
+
+function handleSend(){
+  const inp=document.getElementById('userInput');
+  const raw=inp.value.trim(); if(!raw) return;
+  addMsg(raw,'user'); inp.value=''; inp.style.height='auto';
+  curLang=detectLang(raw);
+  const lower=raw.toLowerCase();
+
+  // Match service by name or id
+  const matched=services.find(s=>
+    lower.includes(s.id)||
+    lower.includes(s.id.replace('-',''))||
+    s.name.en.toLowerCase().split(' ').some(w=>w.length>3&&lower.includes(w))||
+    s.name.hi.length>2&&lower.includes(s.name.hi.slice(0,4))||
+    (s.short.en.toLowerCase().split(/[\/,]/)).some(w=>w.trim().length>3&&lower.includes(w.trim()))
+  );
+
+  if(matched){ respond(()=>showDetail(matched),500); return; }
+
+  if(greetWords.some(w=>lower.includes(w))||lower.length<=6){
+    respond(()=>{
+      addMsg(curLang==='hi'
+        ?'नमस्ते! 👋 **NextGen Studio** में आपका स्वागत है। कोई भी service चुनें, details और price बताऊंगा।'
+        :`Hey! 👋 Welcome to **NextGen Studio**. Pick any service and I'll share full details & pricing.`,'bot');
+      setTimeout(()=>showGrid(),300);
+    }); return;
+  }
+
+  if(priceWords.some(w=>lower.includes(w))){
+    respond(()=>{
+      addMsg(curLang==='hi'
+        ?'किसी भी service का price देखने के लिए उसे नीचे से चुनें 👇'
+        :'Select any service below to see pricing 👇','bot');
+      setTimeout(()=>showGrid(),300);
+    }); return;
+  }
+
+  respond(()=>{
+    addMsg(curLang==='hi'
+      ?'सॉरी 😊 मुझे सिर्फ NextGen Studio की services के बारे में जानकारी देने के लिए बनाया गया है। कोई भी service चुनें, पूरी details बताऊंगा! 👇'
+      :`Sorry 😊 I'm built only to help with NextGen Studio's services. Pick any service below for full details & pricing! 👇`,'bot');
+    setTimeout(()=>showGrid(),400);
+  });
+}
+
+document.getElementById('userInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();}
+});
+document.getElementById('userInput').addEventListener('input',function(){
+  this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';
+});
+
+// ── INIT ──────────────────────────────────────
+window.addEventListener('load',()=>{
+  const chip=document.createElement('div'); chip.className='welcome-chip';
+  chip.textContent='NextGen Studio — AI Assistant'; chat.appendChild(chip);
+  setTimeout(()=>{
+    showTyping();
+    setTimeout(()=>{
+      hideTyping();
+      addMsg(`नमस्ते / Hello! 👋\n\nमैं **NextGen Studio** का AI assistant हूँ।\nHindi या English — जैसे चाहें बात करें! 😊`,'bot');
+      setTimeout(()=>showGrid(),400);
+    },900);
+  },400);
+});
+</script>
+</body>
+</html>
